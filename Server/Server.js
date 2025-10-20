@@ -148,7 +148,6 @@ app.post("/signup", async (req, res) => {
     const user = await User.create({ name, email, password: hashed });
     const token = generateToken(user);
 
-    console.log("✅ Signup successful for:", email);
     res.json({
       message: "Signup successful",
       token,
@@ -174,7 +173,6 @@ app.post("/login", async (req, res) => {
     if (!valid) return res.status(401).json({ error: "Invalid credentials" });
 
     const token = generateToken(user);
-    console.log("✅ Login successful for:", email);
     res.json({
       message: "Login successful",
       token,
