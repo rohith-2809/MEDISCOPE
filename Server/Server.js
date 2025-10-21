@@ -164,7 +164,7 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
   const userId = req.user.id;
 
   // Default service URLs
-  const XRAY_URL = process.env.XRAY_URL?.replace(/\/$/, "") || "https://mediscope-dserv.onrender.com";
+  const XRAY_URL = process.env.XRAY_URL?.replace(/\/$/, "") || "https://mediscope-1.onrender.com";
   const LAB_URL = process.env.LAB_URL?.replace(/\/$/, "") || "https://mediscope-lab.onrender.com";
   const INTERPRETER_URL = process.env.INTERPRETER_URL?.replace(/\/$/, "") || "https://mediscope-interpreter.onrender.com";
 
