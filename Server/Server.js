@@ -152,9 +152,7 @@ app.post("/login", async (req, res) => {
 // -----------------------------
 // PROCESS ROUTE
 // -----------------------------
-// -----------------------------
-// PROCESS ROUTE (Auto URLs + Safe Handling)
-// -----------------------------
+
 app.post("/process", authMiddleware, upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -200,7 +198,7 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
       console.log("🧪 Sending Lab file to:", `${LAB_URL}/parse`);
       const labResponse = await axios.post(`${LAB_URL}/parse`, formData, {
         headers: formData.getHeaders(),
-        timeout: 60000,
+        timeout: 80000,
       });
       microResponse = labResponse.data;
     }
