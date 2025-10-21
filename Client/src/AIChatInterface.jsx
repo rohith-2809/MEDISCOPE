@@ -247,7 +247,7 @@ const AIChatInterface = () => {
         },
       ]);
 
-      const response = await fetch("http://127.0.0.1:5002/interpret", {
+      const response = await fetch("https://mediscope-interpreter.onrender.com/interpret", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -379,7 +379,7 @@ const AIChatInterface = () => {
       formData.append("type", normalizedType);
       formData.append("language", "english");
 
-      const response = await fetch("http://127.0.0.1:4000/process", {
+      const response = await fetch("https://mediscope-backend.onrender.com/process", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
