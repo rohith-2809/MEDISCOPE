@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import LoginPage from "./LoginPage";
-import SignupPage from "./SignupPage";
+import SignupPage from "./SignUpPage";
 import AIChatInterface from "./AIChatInterface";
 import LandingPage from "./LandingPage"
 
