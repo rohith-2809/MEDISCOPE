@@ -33,7 +33,7 @@ const LoginPage = () => {
       setIsLoading(true);
       console.log("Login data:", formData);
 
-      const res = await fetch("http://localhost:4000/login", {
+      const res = await fetch("https://mediscope-backend.onrender.com/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
