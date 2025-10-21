@@ -168,4 +168,10 @@ def predict():
     return jsonify(result), 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Use Render's assigned PORT or fallback to 5000 locally
+    port = int(os.environ.get("PORT", 5000))
+    debug_mode = os.environ.get("FLASK_DEBUG", "False").lower() in ("true", "1", "t")
+
+    logger.info(f"🚀 Starting server on 0.0.0.0:{port}, debug={debug_mode}")
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
+
