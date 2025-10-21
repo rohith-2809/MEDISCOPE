@@ -152,6 +152,9 @@ app.post("/login", async (req, res) => {
 // -----------------------------
 // PROCESS ROUTE
 // -----------------------------
+// -----------------------------
+// PROCESS ROUTE (Auto URLs + Safe Handling)
+// -----------------------------
 app.post("/process", authMiddleware, upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -162,6 +165,14 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
   const requestId = `REQ-${Date.now()}`;
   const userId = req.user.id;
 
+  // Default service URLs
+  const XRAY_URL = process.env.XRAY_URL?.replace(/\/$/, "") || "https://mediscope-dserv.onrender.com";
+  const LAB_URL = process.env.LAB_URL?.replace(/\/$/, "") || "https://mediscope-lab.onrender.com";
+  const INTERPRETER_URL = process.env.INTERPRETER_URL?.replace(/\/$/, "") || "https://mediscope-interpreter.onrender.com";
+
+  console.log("🔍 Active Service URLs:");
+  console.log({ XRAY_URL, LAB_URL, INTERPRETER_URL });
+
   try {
     let microResponse = null;
 
@@ -169,29 +180,37 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
       const fileBuffer = fs.readFileSync(req.file.path);
       const base64Image = fileBuffer.toString("base64");
       const payload = {
-        payload: { image_base64: base64Image, body_part: "X-ray", age: 30, weight: 70, symptoms: "unknown" },
+        payload: {
+          image_base64: base64Image,
+          body_part: "X-ray",
+          age: 30,
+          weight: 70,
+          symptoms: "unknown",
+        },
       };
-      const XRAY_URL = process.env.XRAY_URL?.replace(/\/$/, "") || "";
+      console.log("🩻 Sending X-ray to:", `${XRAY_URL}/predict`);
       const response = await axios.post(`${XRAY_URL}/predict`, payload, {
         headers: { "Content-Type": "application/json" },
+        timeout: 60000,
       });
       microResponse = response.data;
     } else if (type === "labreport" || type === "lab") {
-      const LAB_URL = process.env.LAB_URL?.replace(/\/$/, "") || "";
       const formData = new FormData();
       formData.append("file_path", req.file.path);
+      console.log("🧪 Sending Lab file to:", `${LAB_URL}/parse`);
       const labResponse = await axios.post(`${LAB_URL}/parse`, formData, {
         headers: formData.getHeaders(),
+        timeout: 60000,
       });
       microResponse = labResponse.data;
     }
 
-    const INTERPRETER_URL = process.env.INTERPRETER_URL?.replace(/\/$/, "") || "";
     const formData2 = new FormData();
     formData2.append("username", req.user.name || "User");
     formData2.append("language", language || "english");
     formData2.append("predictions", JSON.stringify(microResponse));
 
+    console.log("🧠 Sending results to interpreter:", `${INTERPRETER_URL}/interpret`);
     const interpreted = await safePost(
       `${INTERPRETER_URL}/interpret`,
       formData2,
@@ -211,6 +230,7 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
     io.emit("completed", { userId, requestId, interpreted });
     res.json({ success: true, requestId, interpreted });
   } catch (err) {
+    console.error("❌ Process route error:", err.message);
     io.emit("failed", { userId, requestId, error: err.message });
     res.status(500).json({ error: "Processing failed", message: err.message });
   } finally {
