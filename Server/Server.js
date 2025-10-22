@@ -149,34 +149,49 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// -----------------------------
-// PROCESS ROUTE
-// -----------------------------
-
 app.post("/process", authMiddleware, upload.single("file"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  console.log("🔥 [PROCESS] Endpoint hit!");
+  console.log("👤 Authenticated user:", req.user);
+  console.log("📥 Headers:", req.headers);
+  console.log("📥 Body:", req.body);
+  console.log("📎 Uploaded file info:", req.file);
+
+  if (!req.file) {
+    console.log("❌ No file uploaded");
+    return res.status(400).json({ error: "No file uploaded" });
+  }
 
   const { type, language } = req.body;
-  if (!["xray", "lab", "labreport"].includes(type))
+  if (!["xray", "lab", "labreport"].includes(type)) {
+    console.log("❌ Invalid type:", type);
     return res.status(400).json({ error: "Invalid type" });
+  }
 
   const requestId = `REQ-${Date.now()}`;
   const userId = req.user.id;
 
-  // Default service URLs
-  const XRAY_URL = process.env.XRAY_URL?.replace(/\/$/, "") || "https://mediscope-1.onrender.com";
-  const LAB_URL = process.env.LAB_URL?.replace(/\/$/, "") || "https://mediscope-lab.onrender.com";
-  const INTERPRETER_URL = process.env.INTERPRETER_URL?.replace(/\/$/, "") || "https://mediscope-interpreter.onrender.com";
-
-  console.log("🔍 Active Service URLs:");
-  console.log({ XRAY_URL, LAB_URL, INTERPRETER_URL });
+  console.log(`🟢 Processing request ${requestId} for user ${userId}`);
+  io.emit("status", { userId, requestId, step: "started" });
 
   try {
     let microResponse = null;
 
+    // ======================================
+    // 🧠 X-RAY HANDLER
+    // ======================================
     if (type === "xray") {
-      const fileBuffer = fs.readFileSync(req.file.path);
+      console.log("🧠 [X-RAY] Preparing to call microservice...");
+
+      const filePath = req.file.path;
+      console.log("📂 Reading file from:", filePath);
+
+      const fileBuffer = fs.readFileSync(filePath);
       const base64Image = fileBuffer.toString("base64");
+      console.log(
+        "🖼️ Converted image to Base64 (first 50 chars):",
+        base64Image.slice(0, 50) + "..."
+      );
+
       const payload = {
         payload: {
           image_base64: base64Image,
@@ -186,35 +201,84 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
           symptoms: "unknown",
         },
       };
-      console.log("🩻 Sending X-ray to:", `${XRAY_URL}/predict`);
+
+      // Hardcoded X-ray URL
+      const XRAY_URL = "https://mediscope-1.onrender.com";
+      console.log("🌐 Calling X-ray microservice at:", `${XRAY_URL}/predict`);
+
       const response = await axios.post(`${XRAY_URL}/predict`, payload, {
         headers: { "Content-Type": "application/json" },
-        timeout: 60000,
       });
+
       microResponse = response.data;
-    } else if (type === "labreport" || type === "lab") {
-      const formData = new FormData();
-      formData.append("file_path", req.file.path);
-      console.log("🧪 Sending Lab file to:", `${LAB_URL}/parse`);
-      const labResponse = await axios.post(`${LAB_URL}/parse`, formData, {
-        headers: formData.getHeaders(),
-        timeout: 80000,
-      });
-      microResponse = labResponse.data;
+      console.log("✅ [X-RAY] Microservice Response:", microResponse);
     }
+
+    // ======================================
+    // 🧪 LAB REPORT HANDLER
+    // ======================================
+    else if (type === "labreport" || type === "lab") {
+      console.log("🧪 [LAB] Preparing to call Lab microservice...");
+
+      // Hardcoded Lab URL
+      const LAB_URL = "https://mediscope-lab.onrender.com";
+      console.log("🌍 Target URL:", `${LAB_URL}/parse`);
+      console.log("📄 Sending file path:", req.file.path);
+
+      try {
+        // Send actual file stream
+        const formData = new FormData();
+        formData.append("file", fs.createReadStream(req.file.path));
+
+        console.log("📤 [LAB] Sending file to microservice...");
+        const labResponse = await axios.post(`${LAB_URL}/parse`, formData, {
+          headers: formData.getHeaders(),
+        });
+
+        microResponse = labResponse.data;
+        console.log("✅ [LAB] Microservice Response:", microResponse);
+      } catch (err) {
+        console.error("❌ [LAB] Microservice Error:", err.message);
+        return res
+          .status(500)
+          .json({ error: "Lab microservice failed", details: err.message });
+      }
+    }
+
+    // ======================================
+    // 🎯 EMIT MICROSERVICE RESULT
+    // ======================================
+    io.emit("status", {
+      userId,
+      requestId,
+      step: "microservice_complete",
+      data: microResponse,
+    });
+
+    // ======================================
+    // 🧠 INTERPRETER CALL
+    // ======================================
+    console.log("🧠 [INTERPRETER] Sending data for interpretation...");
+
+    // Hardcoded Interpreter URL
+    const INTERPRETER_URL = "https://mediscope-interpreter.onrender.com";
 
     const formData2 = new FormData();
     formData2.append("username", req.user.name || "User");
     formData2.append("language", language || "english");
     formData2.append("predictions", JSON.stringify(microResponse));
 
-    console.log("🧠 Sending results to interpreter:", `${INTERPRETER_URL}/interpret`);
     const interpreted = await safePost(
       `${INTERPRETER_URL}/interpret`,
       formData2,
       formData2.getHeaders()
     );
 
+    console.log("✅ [INTERPRETER] Response:", interpreted);
+
+    // ======================================
+    // 💾 SAVE HISTORY
+    // ======================================
     await History.create({
       userId,
       requestId,
@@ -225,14 +289,25 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
       status: "completed",
     });
 
+    console.log("💾 History saved successfully!");
     io.emit("completed", { userId, requestId, interpreted });
+
     res.json({ success: true, requestId, interpreted });
   } catch (err) {
-    console.error("❌ Process route error:", err.message);
+    console.error("❌ [PROCESS ERROR]:", err.message);
     io.emit("failed", { userId, requestId, error: err.message });
-    res.status(500).json({ error: "Processing failed", message: err.message });
+    res
+      .status(500)
+      .json({ error: "Processing failed", message: err.message });
   } finally {
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    // ======================================
+    // 🧹 CLEANUP
+    // ======================================
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+      console.log("🗑️ Cleaned up uploaded file:", req.file.path);
+    }
+    console.log("🏁 [PROCESS] Completed request lifecycle.");
   }
 });
 
