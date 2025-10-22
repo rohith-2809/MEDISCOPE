@@ -247,14 +247,17 @@ const AIChatInterface = () => {
         },
       ]);
 
-      const response = await fetch("https://mediscope-interpreter.onrender.com/interpret", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ type: "chat", query: newMessage.text }),
-      });
+      const response = await fetch(
+        "https://mediscope-interpreter.onrender.com/interpret",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ type: "chat", query: newMessage.text }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -379,13 +382,16 @@ const AIChatInterface = () => {
       formData.append("type", normalizedType);
       formData.append("language", "english");
 
-      const response = await fetch("https://mediscope-backend.onrender.com/process", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        "https://mediscope-backend.onrender.com/process",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
 
       const result = await response.json().catch(() => null);
 
