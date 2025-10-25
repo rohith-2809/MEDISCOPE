@@ -1,6 +1,7 @@
 // =============================
 // MAIN SERVER (CLEAN DEPLOYMENT VERSION)
 // =============================
+
 const FormData = require("form-data");
 const express = require("express");
 const axios = require("axios");
@@ -15,8 +16,10 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
+// -----------------------------
+// CONFIGURATION
+// -----------------------------
 dotenv.config();
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
@@ -28,7 +31,7 @@ app.use(
   cors({
     origin: [
       "https://mediscope-frontend-lxwd.onrender.com",
-      "http://localhost:5173"
+      "http://localhost:5173",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
@@ -43,7 +46,9 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.error("❌ MongoDB Connection Error:", err.message));
+  .catch((err) =>
+    console.error("❌ MongoDB Connection Error:", err.message)
+  );
 
 // -----------------------------
 // SCHEMAS
@@ -74,7 +79,9 @@ const History = mongoose.model("History", historySchema);
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretjwtkey";
 
 const generateToken = (user) =>
-  jwt.sign({ id: user._id, name: user.name }, JWT_SECRET, { expiresIn: "1d" });
+  jwt.sign({ id: user._id, name: user.name }, JWT_SECRET, {
+    expiresIn: "1d",
+  });
 
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
@@ -89,24 +96,31 @@ const authMiddleware = (req, res, next) => {
 };
 
 // -----------------------------
-// FILE UPLOAD
+// FILE UPLOAD SETUP
 // -----------------------------
 const UPLOAD_DIR = path.resolve(__dirname, "uploads");
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+if (!fs.existsSync(UPLOAD_DIR))
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, UPLOAD_DIR),
   filename: (_, file, cb) =>
     cb(null, `${Date.now()}_${file.originalname.replace(/\s+/g, "_")}`),
 });
+
 const upload = multer({ storage });
 
 // -----------------------------
 // SAFE POST UTILITY
 // -----------------------------
 async function safePost(url, data, headers = {}) {
-  const res = await axios.post(url, data, { headers, timeout: 60000 });
-  return res.data;
+  try {
+    const res = await axios.post(url, data, { headers, timeout: 60000 });
+    return res.data;
+  } catch (err) {
+    console.error(`❌ safePost Error: ${err.message}`);
+    throw new Error("Request failed");
+  }
 }
 
 // -----------------------------
@@ -119,13 +133,20 @@ app.post("/signup", async (req, res) => {
 
   try {
     const existing = await User.findOne({ email });
-    if (existing) return res.status(409).json({ error: "User already exists" });
+    if (existing)
+      return res.status(409).json({ error: "User already exists" });
 
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hashed });
     const token = generateToken(user);
-    res.json({ message: "Signup successful", token, user: { id: user._id, name, email } });
-  } catch {
+
+    res.json({
+      message: "Signup successful",
+      token,
+      user: { id: user._id, name, email },
+    });
+  } catch (err) {
+    console.error("Signup Error:", err.message);
     res.status(500).json({ error: "Signup failed" });
   }
 });
@@ -133,22 +154,33 @@ app.post("/signup", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
-    return res.status(400).json({ error: "Email and password required" });
+    return res
+      .status(400)
+      .json({ error: "Email and password required" });
 
   try {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(401).json({ error: "Invalid credentials" });
+    if (!valid)
+      return res.status(401).json({ error: "Invalid credentials" });
 
     const token = generateToken(user);
-    res.json({ message: "Login successful", token, user: { id: user._id, name: user.name, email } });
-  } catch {
+    res.json({
+      message: "Login successful",
+      token,
+      user: { id: user._id, name: user.name, email },
+    });
+  } catch (err) {
+    console.error("Login Error:", err.message);
     res.status(500).json({ error: "Login failed" });
   }
 });
 
+// -----------------------------
+// PROCESS ROUTE
+// -----------------------------
 // -----------------------------
 // PROCESS UPLOAD & PREDICTION (FINAL DEPLOY VERSION)
 // -----------------------------
@@ -313,63 +345,37 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
   }
 });
 
-
-    // ======================================
-    // 💾 SAVE HISTORY
-    // ======================================
-    await History.create({
-      userId,
-      requestId,
-      type,
-      fileName: req.file.filename,
-      rawOutput: microResponse,
-      interpretedOutput: interpreted,
-      status: "completed",
-    });
-
-    console.log("💾 History saved successfully!");
-    io.emit("completed", { userId, requestId, interpreted });
-
-    res.json({ success: true, requestId, interpreted });
-  } catch (err) {
-    console.error("❌ [PROCESS ERROR]:", err.message);
-    io.emit("failed", { userId, requestId, error: err.message });
-    res
-      .status(500)
-      .json({ error: "Processing failed", message: err.message });
-  } finally {
-    // ======================================
-    // 🧹 CLEANUP
-    // ======================================
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-      console.log("🗑️ Cleaned up uploaded file:", req.file.path);
-    }
-    console.log("🏁 [PROCESS] Completed request lifecycle.");
-  }
-});
-
-
-  
-
 // -----------------------------
-// HISTORY
+// HISTORY ROUTE
 // -----------------------------
 app.get("/history", authMiddleware, async (req, res) => {
-  const history = await History.find({ userId: req.user.id }).sort({ createdAt: -1 });
+  const history = await History.find({ userId: req.user.id }).sort({
+    createdAt: -1,
+  });
   res.json(history);
 });
 
 // -----------------------------
-// SOCKET.IO
+// SOCKET.IO HANDLER
 // -----------------------------
 io.on("connection", (socket) => {
   console.log("🔌 Client connected:", socket.id);
-  socket.on("disconnect", () => console.log("❌ Client disconnected:", socket.id));
+  socket.on("disconnect", () =>
+    console.log("❌ Client disconnected:", socket.id)
+  );
+});
+
+// -----------------------------
+// HEALTH CHECK (for Render)
+// -----------------------------
+app.get("/", (req, res) => {
+  res.send("✅ Mediscope backend is running successfully!");
 });
 
 // -----------------------------
 // START SERVER
 // -----------------------------
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () =>
+  console.log(`🚀 Server running on port ${PORT}`)
+);
