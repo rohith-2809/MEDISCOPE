@@ -149,6 +149,9 @@ app.post("/login", async (req, res) => {
   }
 });
 
+// -----------------------------
+// PROCESS UPLOAD & PREDICTION (FINAL DEPLOY VERSION)
+// -----------------------------
 app.post("/process", authMiddleware, upload.single("file"), async (req, res) => {
   console.log("🔥 [PROCESS] Endpoint hit!");
   console.log("👤 Authenticated user:", req.user);
@@ -202,7 +205,7 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
         },
       };
 
-      // Hardcoded X-ray URL
+      // 🔗 Hardcoded X-ray microservice URL
       const XRAY_URL = "https://mediscope-1.onrender.com";
       console.log("🌐 Calling X-ray microservice at:", `${XRAY_URL}/predict`);
 
@@ -220,13 +223,12 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
     else if (type === "labreport" || type === "lab") {
       console.log("🧪 [LAB] Preparing to call Lab microservice...");
 
-      // Hardcoded Lab URL
+      // 🔗 Hardcoded Lab microservice URL
       const LAB_URL = "https://mediscope-lab.onrender.com";
       console.log("🌍 Target URL:", `${LAB_URL}/parse`);
       console.log("📄 Sending file path:", req.file.path);
 
       try {
-        // Send actual file stream
         const formData = new FormData();
         formData.append("file", fs.createReadStream(req.file.path));
 
@@ -254,6 +256,63 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
       step: "microservice_complete",
       data: microResponse,
     });
+
+    // ======================================
+    // 🧠 INTERPRETER CALL
+    // ======================================
+    console.log("🧠 [INTERPRETER] Sending data for interpretation...");
+
+    // 🔗 Hardcoded Interpreter microservice URL
+    const INTERPRETER_URL = "https://mediscope-interpreter.onrender.com";
+
+    const formData2 = new FormData();
+    formData2.append("username", req.user.name || "User");
+    formData2.append("language", language || "english");
+    formData2.append("predictions", JSON.stringify(microResponse));
+
+    const interpreted = await safePost(
+      `${INTERPRETER_URL}/interpret`,
+      formData2,
+      formData2.getHeaders()
+    );
+
+    console.log("✅ [INTERPRETER] Response:", interpreted);
+
+    // ======================================
+    // 💾 SAVE HISTORY
+    // ======================================
+    await History.create({
+      userId,
+      requestId,
+      type,
+      fileName: req.file.filename,
+      rawOutput: microResponse,
+      interpretedOutput: interpreted,
+      status: "completed",
+    });
+
+    console.log("💾 History saved successfully!");
+    io.emit("completed", { userId, requestId, interpreted });
+
+    res.json({ success: true, requestId, interpreted });
+  } catch (err) {
+    console.error("❌ [PROCESS ERROR]:", err.message);
+    io.emit("failed", { userId, requestId, error: err.message });
+    res
+      .status(500)
+      .json({ error: "Processing failed", message: err.message });
+  } finally {
+    // ======================================
+    // 🧹 CLEANUP
+    // ======================================
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+      console.log("🗑️ Cleaned up uploaded file:", req.file.path);
+    }
+    console.log("🏁 [PROCESS] Completed request lifecycle.");
+  }
+});
+
 
     // ======================================
     // 🧠 INTERPRETER CALL
