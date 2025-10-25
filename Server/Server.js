@@ -315,27 +315,6 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
 
 
     // ======================================
-    // 🧠 INTERPRETER CALL
-    // ======================================
-    console.log("🧠 [INTERPRETER] Sending data for interpretation...");
-
-    // Hardcoded Interpreter URL
-    const INTERPRETER_URL = "https://mediscope-interpreter.onrender.com";
-
-    const formData2 = new FormData();
-    formData2.append("username", req.user.name || "User");
-    formData2.append("language", language || "english");
-    formData2.append("predictions", JSON.stringify(microResponse));
-
-    const interpreted = await safePost(
-      `${INTERPRETER_URL}/interpret`,
-      formData2,
-      formData2.getHeaders()
-    );
-
-    console.log("✅ [INTERPRETER] Response:", interpreted);
-
-    // ======================================
     // 💾 SAVE HISTORY
     // ======================================
     await History.create({
@@ -369,6 +348,9 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
     console.log("🏁 [PROCESS] Completed request lifecycle.");
   }
 });
+
+
+  
 
 // -----------------------------
 // HISTORY
