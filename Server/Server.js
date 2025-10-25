@@ -178,12 +178,6 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// -----------------------------
-// PROCESS ROUTE
-// -----------------------------
-// -----------------------------
-// PROCESS UPLOAD & PREDICTION (FINAL DEPLOY VERSION)
-// -----------------------------
 app.post("/process", authMiddleware, upload.single("file"), async (req, res) => {
   console.log("🔥 [PROCESS] Endpoint hit!");
   console.log("👤 Authenticated user:", req.user);
@@ -191,16 +185,11 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
   console.log("📥 Body:", req.body);
   console.log("📎 Uploaded file info:", req.file);
 
-  if (!req.file) {
-    console.log("❌ No file uploaded");
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
   const { type, language } = req.body;
-  if (!["xray", "lab", "labreport"].includes(type)) {
-    console.log("❌ Invalid type:", type);
+  if (!["xray", "lab", "labreport"].includes(type))
     return res.status(400).json({ error: "Invalid type" });
-  }
 
   const requestId = `REQ-${Date.now()}`;
   const userId = req.user.id;
@@ -211,21 +200,12 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
   try {
     let microResponse = null;
 
-    // ======================================
-    // 🧠 X-RAY HANDLER
-    // ======================================
+    // ----------------------------
+    // X-RAY HANDLER
+    // ----------------------------
     if (type === "xray") {
-      console.log("🧠 [X-RAY] Preparing to call microservice...");
-
-      const filePath = req.file.path;
-      console.log("📂 Reading file from:", filePath);
-
-      const fileBuffer = fs.readFileSync(filePath);
+      const fileBuffer = fs.readFileSync(req.file.path);
       const base64Image = fileBuffer.toString("base64");
-      console.log(
-        "🖼️ Converted image to Base64 (first 50 chars):",
-        base64Image.slice(0, 50) + "..."
-      );
 
       const payload = {
         payload: {
@@ -237,10 +217,7 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
         },
       };
 
-      // 🔗 Hardcoded X-ray microservice URL
       const XRAY_URL = "https://mediscope-1.onrender.com";
-      console.log("🌐 Calling X-ray microservice at:", `${XRAY_URL}/predict`);
-
       const response = await axios.post(`${XRAY_URL}/predict`, payload, {
         headers: { "Content-Type": "application/json" },
       });
@@ -249,39 +226,26 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
       console.log("✅ [X-RAY] Microservice Response:", microResponse);
     }
 
-    // ======================================
-    // 🧪 LAB REPORT HANDLER
-    // ======================================
-    else if (type === "labreport" || type === "lab") {
-      console.log("🧪 [LAB] Preparing to call Lab microservice...");
-
-      // 🔗 Hardcoded Lab microservice URL
+    // ----------------------------
+    // LAB / LABREPORT HANDLER
+    // ----------------------------
+    else if (type === "lab" || type === "labreport") {
       const LAB_URL = "https://mediscope-lab.onrender.com";
-      console.log("🌍 Target URL:", `${LAB_URL}/parse`);
-      console.log("📄 Sending file path:", req.file.path);
+      const formData = new FormData();
+      formData.append("files", fs.createReadStream(req.file.path));
 
-      try {
-        const formData = new FormData();
-        formData.append("file", fs.createReadStream(req.file.path));
+      console.log("📤 [LAB] Sending file to microservice...");
+      const labResponse = await axios.post(`${LAB_URL}/parse`, formData, {
+        headers: formData.getHeaders(),
+      });
 
-        console.log("📤 [LAB] Sending file to microservice...");
-        const labResponse = await axios.post(`${LAB_URL}/parse`, formData, {
-          headers: formData.getHeaders(),
-        });
-
-        microResponse = labResponse.data;
-        console.log("✅ [LAB] Microservice Response:", microResponse);
-      } catch (err) {
-        console.error("❌ [LAB] Microservice Error:", err.message);
-        return res
-          .status(500)
-          .json({ error: "Lab microservice failed", details: err.message });
-      }
+      microResponse = labResponse.data;
+      console.log("✅ [LAB] Microservice Response:", microResponse);
     }
 
-    // ======================================
-    // 🎯 EMIT MICROSERVICE RESULT
-    // ======================================
+    // ----------------------------
+    // EMIT MICROSERVICE RESULT
+    // ----------------------------
     io.emit("status", {
       userId,
       requestId,
@@ -289,14 +253,10 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
       data: microResponse,
     });
 
-    // ======================================
-    // 🧠 INTERPRETER CALL
-    // ======================================
-    console.log("🧠 [INTERPRETER] Sending data for interpretation...");
-
-    // 🔗 Hardcoded Interpreter microservice URL
+    // ----------------------------
+    // INTERPRETER CALL
+    // ----------------------------
     const INTERPRETER_URL = "https://mediscope-interpreter.onrender.com";
-
     const formData2 = new FormData();
     formData2.append("username", req.user.name || "User");
     formData2.append("language", language || "english");
@@ -310,9 +270,9 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
 
     console.log("✅ [INTERPRETER] Response:", interpreted);
 
-    // ======================================
-    // 💾 SAVE HISTORY
-    // ======================================
+    // ----------------------------
+    // SAVE HISTORY
+    // ----------------------------
     await History.create({
       userId,
       requestId,
@@ -323,20 +283,13 @@ app.post("/process", authMiddleware, upload.single("file"), async (req, res) => 
       status: "completed",
     });
 
-    console.log("💾 History saved successfully!");
     io.emit("completed", { userId, requestId, interpreted });
-
     res.json({ success: true, requestId, interpreted });
   } catch (err) {
     console.error("❌ [PROCESS ERROR]:", err.message);
     io.emit("failed", { userId, requestId, error: err.message });
-    res
-      .status(500)
-      .json({ error: "Processing failed", message: err.message });
+    res.status(500).json({ error: "Processing failed", message: err.message });
   } finally {
-    // ======================================
-    // 🧹 CLEANUP
-    // ======================================
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
       console.log("🗑️ Cleaned up uploaded file:", req.file.path);
