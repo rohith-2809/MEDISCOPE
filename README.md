@@ -1,4 +1,4 @@
-# MediScope 🏥
+# MediScope 
 > **AI-Powered Medical Interpretation & Analysis**
 
 ![React](https://img.shields.io/badge/Frontend-React-blue?style=for-the-badge&logo=react)
@@ -11,7 +11,7 @@
 
 ---
 
-## 🚀 Features
+##  Features
 
 - **🩺 Instant X-Ray Analysis**: Upload an X-ray, and our AI identifies potential fractures, anomalies, or normal findings.
 - **🧪 Lab Report Simplification**: Converts complex blood work and lab data into simple, actionable summaries.
@@ -21,7 +21,7 @@
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 - **Frontend**: React (Vite), Tailwind CSS, Framer Motion
 - **Backend**: Node.js, Express, MongoDB
@@ -31,7 +31,7 @@
 
 ---
 
-## 📦 Project Structure
+##  Project Structure
 
 ```bash
 MEDISCOPE/
@@ -51,7 +51,7 @@ MEDISCOPE/
 
 ---
 
-## ⚡ Quick Start
+##  Quick Start
 
 ### Prerequisites
 - Node.js (v16+)
