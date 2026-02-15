@@ -122,7 +122,7 @@ const upload = multer({ storage });
 async function safePost(url, data, headers = {}) {
   try {
     console.log(`🌐 Making POST request to: ${url}`);
-    const res = await axios.post(url, data, { headers, timeout: 60000 });
+    const res = await axios.post(url, data, { headers, timeout: 180000 });
     console.log(`✅ Response received from ${url}`);
     return res.data;
   } catch (err) {
@@ -253,7 +253,7 @@ app.post(
           headers: { "Content-Type": "application/json" },
           maxBodyLength: Infinity, // Critical for Base64 images
           maxContentLength: Infinity,
-          timeout: 60000 // 60s timeout
+          timeout: 180000 // 180s timeout
         });
 
         microResponse = response.data;
@@ -271,16 +271,18 @@ app.post(
         console.log("📄 Sending file path:", req.file.path);
 
         try {
-          console.log("🔹 Creating FormData...");
+          // Using multipart/form-data for reliability
           const formData = new FormData();
+          // Send key "files" to match LabMicroservice's "Case 2" logic
           formData.append("files", fs.createReadStream(req.file.path));
 
-          console.log("📤 [LAB] Streaming file to microservice (waiting for response)...");
+          console.log("📤 [LAB] Streaming file to microservice...");
           const labResponse = await axios.post(`${LAB_URL}/parse`, formData, {
             headers: {
               ...formData.getHeaders(),
+              // Ensure content-length is set if possible, though axios/form-data usually handles it
             },
-            maxBodyLength: Infinity,
+            maxBodyLength: Infinity, // Allow large files
             maxContentLength: Infinity
           });
 
