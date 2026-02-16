@@ -8,7 +8,7 @@ export default defineConfig({
       '/signup': {
         target: 'https://mediscope-2-server.onrender.com',
         changeOrigin: true,
-      },
+      }, 
       '/login': {
         target: 'https://mediscope-2-server.onrender.com',
         changeOrigin: true,
