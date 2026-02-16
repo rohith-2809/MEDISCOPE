@@ -58,7 +58,7 @@ const AIChatInterface = () => {
       messages: [],
     },
   ]);
-  const [showAuthWarning, setShowAuthWarning] = useState(false);
+  const [showAuthWarning, setShowAuthWarning] = useState(false); 
   const [userDetails, setUserDetails] = useState(null);
 
   const fileInputRef = useRef(null);
