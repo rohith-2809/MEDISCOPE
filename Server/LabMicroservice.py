@@ -35,7 +35,7 @@ API_KEY = os.getenv("API_KEY")
 if not API_KEY:
     logging.warning("⚠️ API_KEY not found in environment variables. Gemini features will fail.")
 
-genai.configure(api_key=API_KEY)
+genai.configure(api_key=API_KEY) 
 
 # ----------------- OCR -----------------
 def extract_text(file_path):
