@@ -20,66 +20,6 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
-const { spawn } = require("child_process");
-
-// -----------------------------
-// MICROSERVICES MANAGEMENT
-// -----------------------------
-const pythonExecutable = "python"; // Or "python3" depending on Render environment
-
-const startMicroservice = (name, script, port) => {
-  console.log(`🚀 Starting ${name} on port ${port}...`);
-  const service = spawn(pythonExecutable, [script], { stdio: "inherit" });
-
-  service.on("close", (code) => {
-    console.log(`⚠️ ${name} exited with code ${code}`);
-  });
-
-  return service;
-};
-
-// Start services
-const labService = startMicroservice("LabMicroservice", "LabMicroservice.py", 5001);
-const xrayService = startMicroservice("XrayMicroservice", "XrayMicroservice.py", 5000);
-const interpreterService = startMicroservice("Interpreter.py", "Interpreter.py", 5002);
-
-// Health Check Endpoint for Render
-app.get("/health", async (req, res) => {
-  const status = {
-    server: "running",
-    microservices: {
-      lab: "unknown",
-      xray: "unknown",
-      interpreter: "unknown"
-    }
-  };
-
-  try {
-    await axios.get("http://127.0.0.1:5001/");
-    status.microservices.lab = "connected";
-  } catch (e) { status.microservices.lab = "failed"; }
-
-  try {
-    await axios.get("http://127.0.0.1:5000/");
-    status.microservices.xray = "connected";
-  } catch (e) { status.microservices.xray = "failed"; }
-
-  try {
-    await axios.get("http://127.0.0.1:5002/");
-    status.microservices.interpreter = "connected";
-  } catch (e) { status.microservices.interpreter = "failed"; }
-
-  res.json(status);
-});
-
-// Cleanup on exit
-process.on("SIGINT", () => {
-  console.log("🛑 Stopping microservices...");
-  labService.kill();
-  xrayService.kill();
-  interpreterService.kill();
-  process.exit();
-});
 
 // -----------------------------
 // CORS + JSON PARSER
@@ -182,7 +122,7 @@ const upload = multer({ storage });
 async function safePost(url, data, headers = {}) {
   try {
     console.log(`🌐 Making POST request to: ${url}`);
-    const res = await axios.post(url, data, { headers, timeout: 180000 });
+    const res = await axios.post(url, data, { headers, timeout: 60000 });
     console.log(`✅ Response received from ${url}`);
     return res.data;
   } catch (err) {
@@ -313,11 +253,7 @@ app.post(
           headers: { "Content-Type": "application/json" },
           maxBodyLength: Infinity, // Critical for Base64 images
           maxContentLength: Infinity,
-<<<<<<< HEAD
           timeout: 60000 // 60s timeout
-=======
-          timeout: 180000 // 60s timeout
->>>>>>> e95c7ac6c5425815d3d7acf265f09dab6f5c026a
         });
 
         microResponse = response.data;
@@ -327,7 +263,7 @@ app.post(
       // ======================================
       // 🧪 LAB REPORT HANDLER
       // ======================================
-        } else if (type === "labreport" || type === "lab") {
+      else if (type === "labreport" || type === "lab") {
         console.log("🧪 [LAB] Preparing to call Lab microservice...");
 
         const LAB_URL = process.env.LAB_URL?.replace(/\/$/, "") || "";
@@ -335,7 +271,6 @@ app.post(
         console.log("📄 Sending file path:", req.file.path);
 
         try {
-<<<<<<< HEAD
           console.log("🔹 Creating FormData...");
           const formData = new FormData();
           formData.append("files", fs.createReadStream(req.file.path));
@@ -346,21 +281,6 @@ app.post(
               ...formData.getHeaders(),
             },
             maxBodyLength: Infinity,
-=======
-          // Using multipart/form-data for reliability
-          // Using multipart/form-data for reliability
-          const formData = new FormData();
-          // Send key "files" to match LabMicroservice's "Case 2" logic
-          formData.append("files", fs.createReadStream(req.file.path));
-
-          console.log("📤 [LAB] Streaming file to microservice...");
-          const labResponse = await axios.post(`${LAB_URL}/parse`, formData, {
-            headers: {
-              ...formData.getHeaders(),
-              // Ensure content-length is set if possible, though axios/form-data usually handles it
-            },
-            maxBodyLength: Infinity, // Allow large files
->>>>>>> e95c7ac6c5425815d3d7acf265f09dab6f5c026a
             maxContentLength: Infinity
           });
 
