@@ -30,11 +30,10 @@ const Navbar = () => {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
-      className={`fixed w-full z-50 transition-all duration-500 ${
-        isScrolled
-          ? "bg-white/95 backdrop-blur-xl shadow-lg py-2"
-          : "bg-transparent py-4"
-      }`}
+      className={`fixed w-full z-50 transition-all duration-500 ${isScrolled
+        ? "bg-white/95 backdrop-blur-xl shadow-lg py-2"
+        : "bg-transparent py-4"
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
@@ -44,10 +43,10 @@ const Navbar = () => {
             className="flex items-center space-x-3"
           >
             <img
-                                  src={Logo}
-                                  alt="MediScope Logo"
-                                  className="w-8 h-8 rounded-lg"
-                                />
+              src={Logo}
+              alt="MediScope Logo"
+              className="w-8 h-8 rounded-lg"
+            />
             <span className="text-2xl font-bold text-gray-800">MediScope</span>
           </motion.div>
 
@@ -66,14 +65,14 @@ const Navbar = () => {
                 {item.name}
               </motion.a>
             ))}
-           <motion.button
-  whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(14, 165, 233, 0.15)" }}
-  whileTap={{ scale: 0.95 }}
-  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-lg font-semibold shadow-md"
-  onClick={() => navigate("/ChatInterface")}  // <-- navigate to your chat interface route
->
-  Try Now
-</motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(14, 165, 233, 0.15)" }}
+              whileTap={{ scale: 0.95 }}
+              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-lg font-semibold shadow-md"
+              onClick={() => navigate("/ChatInterface")}  // <-- navigate to your chat interface route
+            >
+              Try Now
+            </motion.button>
 
           </div>
 
@@ -782,21 +781,21 @@ const AboutUsSection = () => {
 const TestimonialsSection = () => {
   const testimonials = [
     {
-      name: "Dr. Sarah Chen",
-      role: "Cardiologist, Mayo Clinic",
+      name: "Dr. Omprakash Patil",
+      role: "Cardiologist, Patil Clinic",
       image: "👩‍⚕️",
       content: "MedAI has revolutionized how we process patient reports. The accuracy is remarkable and it saves us hours of analysis time.",
       rating: 5
     },
     {
-      name: "Michael Rodriguez",
+      name: "Mukul Sharma",
       role: "Patient",
       image: "👨‍💼",
       content: "As someone without medical background, MedAI helped me understand my lab results and have informed discussions with my doctor.",
       rating: 5
     },
     {
-      name: "Dr. James Wilson",
+      name: "Dr. Yogesh Aher",
       role: "Radiology Director",
       image: "👨‍⚕️",
       content: "The CNN model's 97% accuracy in detecting anomalies is impressive. It's become an essential tool in our diagnostic workflow.",
@@ -933,8 +932,8 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4">Contact</h3>
             <ul className="space-y-2 text-gray-300">
               <li>📧 hello@medai.com</li>
-              <li>📞 +1 (555) 123-4567</li>
-              <li>📍 123 Healthcare Ave, Medical City</li>
+              <li>📞 +91 9866543732</li>
+              <li>📍 123 MediScope, Medical City, India</li>
             </ul>
           </div>
         </div>
@@ -942,7 +941,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="border-t border-white/10 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-300 text-sm">
-            © 2024 MedAI. All rights reserved. HIPAA Compliant.
+            © 2026 MedAI. All rights reserved. HIPAA Compliant.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a href="#" className="text-gray-300 hover:text-white text-sm">Privacy Policy</a>
