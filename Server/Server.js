@@ -1,10 +1,10 @@
 // =============================
 // MAIN SERVER
 // =============================
-const FormData = require("form-data"); 
-const express = require("express"); 
-const axios = require("axios"); 
-const mongoose = require("mongoose"); 
+const FormData = require("form-data");
+const express = require("express");
+const axios = require("axios");
+const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const { Server } = require("socket.io");
