@@ -1,11 +1,4 @@
 # Lab Microservice
-
-
-
-
-
-
-
 from flask import Flask, request, jsonify
 import os, logging
 from werkzeug.utils import secure_filename
