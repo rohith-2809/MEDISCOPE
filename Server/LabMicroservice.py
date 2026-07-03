@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 # Lab Microservice
 from flask import Flask, request, jsonify
 import os, logging
